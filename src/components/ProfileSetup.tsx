@@ -116,22 +116,43 @@ export default function ProfileSetup({
           </label>
         </div>
 
-        <div className="mt-5 flex items-center justify-between rounded-2xl border border-am-gold/30 bg-am-gold/5 p-3">
-          <div>
+        <div className="mt-5 rounded-2xl border border-am-gold/30 bg-am-gold/5 p-3">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
             <div className="text-[10px] uppercase tracking-widest text-am-gold/80">
               Կեղծ Հայկական Մականուն
             </div>
-            <div className="text-base font-black">{nickname}</div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setNickname(pick(NICKNAMES));
+                  playPop();
+                }}
+                className="rounded-lg bg-am-gold px-2.5 py-1 text-[10px] font-black text-black active:scale-95"
+                aria-label="Պատահական մականուն"
+              >
+                🎰 Պատահական
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNickname("");
+                  playPop();
+                }}
+                className="flex h-6 w-6 items-center justify-center rounded-lg border border-am-gold/50 bg-am-gold/10 text-sm font-black text-am-gold hover:bg-am-gold/20 active:scale-95"
+                aria-label="Անհատական մականուն"
+                title="Մաքրել՝ քո սեփականը գրելու համար"
+              >
+                +
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => {
-              setNickname(pick(NICKNAMES));
-              playPop();
-            }}
-            className="rounded-lg bg-am-gold px-3 py-2 text-xs font-black text-black active:scale-95"
-          >
-            🎰 Փոխել
-          </button>
+          <input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value.slice(0, 80))}
+            placeholder="Գրիր քո մականունը... 🇦🇲"
+            className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-base font-black outline-none placeholder:text-white/30 focus:border-am-gold"
+          />
         </div>
       </motion.div>
 
