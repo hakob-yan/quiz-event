@@ -8,66 +8,39 @@ import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import { useWindowSize } from "react-use";
 import { Profile } from "@/lib/store";
+import type { RsvpEntry } from "@/lib/types";
 import PatrioticIDCard from "./PatrioticIDCard";
 import RSVPList from "./RSVPList";
+import ShareMenu from "./ShareMenu";
 import { playCheer, playFanfare, playFirework, unlockAudio } from "@/lib/sounds";
-import { SHARE_MESSAGES } from "@/lib/armenianContent";
 import { pick } from "@/lib/utils";
+import { buildProfileUrl } from "@/lib/publicUrl";
 
 const RED = ["#d90012", "#ff264a"];
 const BLUE = ["#0033a0", "#1a5dff"];
 const ORANGE = ["#f2a800", "#ffcc00"];
 const ALL = [...RED, ...BLUE, ...ORANGE];
 
-export default function YesScreen({ profile, onRestart }: { profile: Profile; onRestart: () => void }) {
+// Pure celebration screen. The RSVP has already been POSTed by EnrichScreen,
+// so we receive the resulting `entry` as a prop — no server round-trip here.
+export default function YesScreen({
+  profile,
+  entry,
+  onRestart,
+}: {
+  profile: Profile;
+  entry: RsvpEntry;
+  onRestart: () => void;
+}) {
   const { width, height } = useWindowSize();
   const [flashing, setFlashing] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [myId, setMyId] = useState<string | undefined>(undefined);
-  const [listKey, setListKey] = useState(0);
-  const submitted = useRef(false);
-
-  // Save RSVP to the server (writes rsvps.json in project root via fs).
-  useEffect(() => {
-    if (submitted.current) return;
-    submitted.current = true;
-
-    const payload = {
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      nickname: profile.nickname,
-      title: profile.title,
-      patriotismScore: profile.patriotismScore,
-      avatarSeed: profile.avatarSeed,
-      styleIdx: profile.styleIdx,
-      overlayIdx: profile.overlayIdx,
-      selfie: profile.selfie, // data URL — server saves to public/uploads/
-    };
-
-    fetch("/api/rsvp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(await r.text());
-        return r.json();
-      })
-      .then((data) => {
-        setMyId(data?.entry?.id);
-        setListKey((k) => k + 1);
-      })
-      .catch(() => {
-        toast.error("Չստացվեց պահպանել RSVP-ն 😬");
-      });
-  }, [profile]);
 
   useEffect(() => {
     unlockAudio();
     playFanfare();
     playCheer();
 
-    // Big bang fireworks waves
     const fire = (origin: { x: number; y: number }, colors: string[]) => {
       confetti({
         particleCount: 80,
@@ -117,30 +90,8 @@ export default function YesScreen({ profile, onRestart }: { profile: Profile; on
     }
   };
 
-  const shareText = pick(SHARE_MESSAGES);
-  const url = typeof window !== "undefined" ? window.location.href : "";
-
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "Մայիսի 28", text: shareText, url });
-      } else {
-        await navigator.clipboard.writeText(`${shareText} ${url}`);
-        toast.success("Հղումը պատճենված է 📋");
-      }
-    } catch {
-      // user canceled
-    }
-  };
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Հղումը պատճենված է 📋");
-    } catch {
-      toast.error("Չստացվեց պատճենել");
-    }
-  };
+  const publicUrl = buildProfileUrl(entry.id);
+  const shareText = `${profile.firstName} ${profile.lastName} — հաստատված հայրենասեր 🇦🇲 Մայիսի 28-ին գալիս ա։ Իսկ դու՞`;
 
   return (
     <div className="relative z-10 flex min-h-screen w-full flex-col items-center justify-center gap-6 px-4 py-10">
@@ -194,23 +145,15 @@ export default function YesScreen({ profile, onRestart }: { profile: Profile; on
           onClick={handleDownload}
           className="rounded-2xl bg-am-gold px-5 py-3 text-sm font-black text-black shadow-[0_0_40px_rgba(255,204,0,.6)] active:scale-95"
         >
-          ⬇️ ՆԵՐԲԵՌՆԵԼ
-        </button>
-        <button
-          onClick={handleShare}
-          className="rounded-2xl bg-am-red px-5 py-3 text-sm font-black text-white shadow-[0_0_40px_rgba(217,0,18,.6)] active:scale-95"
-        >
-          🚀 ԿԻՍՎԵԼ
-        </button>
-        <button
-          onClick={handleCopy}
-          className="rounded-2xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-black text-white hover:bg-white/15 active:scale-95"
-        >
-          🔗 Պատճենել հղումը
+          ⬇️ ՆԵՐԲԵՌՆԵԼ ID-Ն
         </button>
       </motion.div>
 
-      <RSVPList refreshKey={listKey} currentId={myId} />
+      <div className="w-full max-w-2xl">
+        <ShareMenu url={publicUrl} text={shareText} />
+      </div>
+
+      <RSVPList currentId={entry.id} />
 
       <button
         onClick={onRestart}

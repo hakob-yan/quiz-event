@@ -6,6 +6,7 @@ import CountUp from "react-countup";
 import { Profile } from "@/lib/store";
 import { generateAvatarDataUri } from "@/lib/avatar";
 import { hashString } from "@/lib/utils";
+import VerdictBadge from "./VerdictBadge";
 
 const PatrioticIDCard = forwardRef<HTMLDivElement, { profile: Profile }>(function PatrioticIDCard(
   { profile },
@@ -107,11 +108,8 @@ const PatrioticIDCard = forwardRef<HTMLDivElement, { profile: Profile }>(functio
         <span className="font-black text-am-gold">28.05 · ՎԱՂԸ</span>
       </div>
 
-      <div
-        className="pointer-events-none absolute -right-4 -top-4 rotate-12 rounded-full border-4 border-am-red px-3 py-1 text-sm font-black text-am-red"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        ՀԱՍՏԱՏՎԱԾ ՀԱՅՐԵՆԱՍԵՐ
+      <div className="absolute -right-3 -top-3">
+        <VerdictBadge verdict={profile.verdict ?? "success"} size="stamp" animate />
       </div>
     </motion.div>
   );

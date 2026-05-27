@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useState } from "react";
+import type { QuizAnswer, Verdict } from "@/lib/types";
 
-export type Stage = "intro" | "setup" | "main" | "yes" | "no";
+export type Stage = "intro" | "setup" | "quiz" | "main" | "enrich" | "yes" | "no";
 
 export type Profile = {
   firstName: string;
@@ -14,52 +15,27 @@ export type Profile = {
   nickname: string;
   title: string;
   patriotismScore: number;
+  quizAnswers?: QuizAnswer[];
+  verdict?: Verdict;
 };
 
-const KEY = "republic-day-state-v1";
-
-type Saved = {
+type State = {
   stage: Stage;
   profile: Profile | null;
   noBlocked: boolean;
 };
 
-const defaults: Saved = {
+const defaults: State = {
   stage: "intro",
   profile: null,
   noBlocked: false,
 };
 
-function read(): Saved {
-  if (typeof window === "undefined") return defaults;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return defaults;
-    return { ...defaults, ...JSON.parse(raw) } as Saved;
-  } catch {
-    return defaults;
-  }
-}
-
-function write(s: Saved) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(s));
-  } catch {}
-}
-
+// In-memory only. The server (rsvps.json via fs) is the source of truth for
+// preserved data; client state is intentionally ephemeral so every visit
+// is a fresh ritual.
 export function useAppState() {
-  const [state, setState] = useState<Saved>(defaults);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setState(read());
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (hydrated) write(state);
-  }, [state, hydrated]);
+  const [state, setState] = useState<State>(defaults);
 
   const setStage = useCallback((stage: Stage) => setState((s) => ({ ...s, stage })), []);
   const setProfile = useCallback(
@@ -73,7 +49,6 @@ export function useAppState() {
   const reset = useCallback(() => setState(defaults), []);
 
   return {
-    hydrated,
     stage: state.stage,
     profile: state.profile,
     noBlocked: state.noBlocked,

@@ -35,7 +35,7 @@ yarn-error.log*
 .vercel
 
 # runtime data written by /api/rsvp (fs-backed store)
-/rsvps.json
+# /rsvps.json
 /public/uploads/
 
 # typescript

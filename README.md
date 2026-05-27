@@ -18,36 +18,56 @@ Built for TikTok/Instagram shareability. Everything in the UI is in **Armenian**
 - Auto-generated DiceBear avatars with chaotic Armenian overlays (🥸 🕶️ 👑 🦅)
 - Random funny Armenian nicknames (Խորովածի Թագավոր, Տատի Ֆավորիտ, etc.)
 
-**Step 2 — Main screen**
+**Step 2 — Crazy quiz («Անկախության Սերունդ»)**
+- 3 random questions drawn from a 10-question pool of chaotic/embarrassing Armenian Gen-Z prompts ("Քանի՞ selfie ես արել միայն story դնելու համար 📸", "Եթե anonymous confession wall լիներ, ինչ կգրեիր 👀", …).
+- Computing screen («Տատիկը հաշվարկում է...») then a giant stamp reveal.
+- Verdict is **randomly picked but weighted by the answers** — higher option indices and matching the marked "most-honest" option nudge slightly toward FAIL. Range: 20–80% fail, hard-clamped, so the result still feels chaotic.
+- Outcome → `SUCCESS` (ՎԱՐՊԵՏ ՀԱՅՐԵՆԱՍԵՐ ✓ — gold stamp) or `FAIL` (ՏԱՏԻԿԸ ՉԻ ՀԱՎԱՆԵԼ ✗ — red stamp).
+- Both verdicts proceed to the YES/NO screen — failing the quiz doesn't lock you out, it just brands your card and your row in the list.
+
+**Step 3 — Main screen**
 - Dramatic «{Անուն}, ՎԱՂԸ ԳԱԼԻ՞Ս ԵՍ 🇦🇲» headline
 - `ԱՅՈ 🇦🇲` button — glowing, dramatic, calls cheering on click
 - `ՉԷ 😐` button — see below
 
 **The impossible NO button:**
-- Springs away from cursor
-- Random teleports across the viewport
-- Rotates and rescales chaotically
-- Spawns fake decoy buttons
-- Sometimes becomes microscopic
+- Stays close to the YES button — never escapes off-screen. Motion is hard-clamped to a 90px (60px on mobile) radius around its origin and gently springs back to (0,0) whenever the cursor isn't near.
+- Dodges only when the cursor enters its threshold (no teleport)
+- Rotates and rescales chaotically; occasionally becomes microscopic
+- Spawns fake decoy buttons inside the same dodge area
 - Gets more aggressive each escape (tracked + visualized)
-- Drifts on its own on touch devices
-- Even if you "click" it, there's a 85%+ chance it dodges
+- Drifts and twitches on touch devices
+- Click slip-probability scales with aggression (50%→85%)
 - Spams Armenian insult toasts ("Տատիկը հիասթափված ա")
 
-**Step 3 — Yes**
+**Step 4 — Yes**
 - Confetti + canvas-confetti fireworks in flag colors
 - Cheering / fanfare synth sounds
-- Fake patriotic **ID card** with avatar, title, patriotism score
+- Fake patriotic **ID card** with avatar, title, patriotism score, and the SUCCESS/FAIL verdict stamp animated in
 - Download as PNG (via `html-to-image`)
-- Native share + copy-link
+- Native share + copy-link (via the ShareMenu)
+
+**Per-user public page (`/p/[id]`)**
+- Every confirmed patriot gets a permanent shareable URL like `https://yoursite.com/p/8544d9b9…`.
+- Renders the user's full patriotic ID card with confetti + duduk + fanfare.
+- Has its own per-user **OG / Twitter card metadata** (title, description, image) generated server-side from `rsvps.json` — so when shared on WhatsApp / Telegram / Facebook / X / Viber, the preview already says «{Անուն} {Ազգանուն} — ՀԱՍՏԱՏՎԱԾ ՀԱՅՐԵՆԱՍԵՐ 🇦🇲».
+- Includes a **«🦅 ՍԿՍԵԼ ԻՄ ID-Ն»** CTA that drops the visitor into the main flow to make their own.
+- Returns a 404 for unknown ids.
+
+**Share menu (`<ShareMenu>`)**
+- Renders one-tap share buttons via `react-share`:
+  WhatsApp · Telegram · Facebook · X · Viber · Email · Copy-link · Native (📲 navigator.share)
+- Always shares the visitor's **own per-user URL** (`/p/{myId}`), not the home page, so each share funnels people to that user's profile and the «start your own ID» CTA.
+- Used on both the YES screen and the public profile page.
 
 **RSVP list (on the YES screen)**
 - Every YES submission is `POST`ed to `/api/rsvp`, which appends to **`rsvps.json` in the project root** using Node's `fs` module.
 - If the user uploaded a selfie, the image is base64-decoded and written to **`public/uploads/{id}.{ext}`** (max 2MB). For DiceBear-only avatars we just store the seed + style index and re-render in-browser.
-- Re-submitting the same name + avatar seed **upserts** (preserves original `createdAt` so the user keeps their list position).
+- Re-submitting the same name + avatar seed **upserts** (preserves original `createdAt`, prior selfie, and prior quiz answers / verdict if the new submission omits them — so the user keeps their list position and their stamp).
+- Each entry also stores `quizAnswers` + `verdict`, which drives the SUCCESS / FAIL chip rendered on each tile.
 - The YES screen then renders «🇦🇲 ՀԱՅՐԵՆԱՍԵՐՆԵՐԻ ՑՈՒՑԱԿ» — animated grid of every patriot who said ԱՅՈ, with a glowing «ԴՈՒ» badge on the current user.
 
-**Step 4 — No**
+**Step 5 — No**
 - Entire screen turns grayscale + CRT effect
 - Sad duduk synth plays
 - "ՔՈ ՔԱՂԱՔԱՑԻՈՒԹՅՈՒՆԸ ԺԱՄԱՆԱԿԱՎՈՐ ԿԱՍԵՑՎԵԼ Է"
@@ -67,7 +87,9 @@ Built for TikTok/Instagram shareability. Everything in the UI is in **Armenian**
 - **html-to-image** for ID card downloads
 - **@dicebear/core** + **@dicebear/collection** for chaotic avatars
 - **Web Audio API** for synthetic sounds (no audio files needed — duduk, fanfare, cheers, glitches, warnings all synthesized at runtime)
-- **localStorage** persistence — your profile and "no-blocked" state survive reloads
+- **Server-side persistence + one localStorage flag** — profile/answers live only in memory; the server's `rsvps.json` is the source of truth. We persist **only the user's entry id** in `localStorage["rd_rsvp_id_v1"]`, which lets us:
+  - detect return visits and show a sassy «🔁 ՎԵՐԱԴԱՐՁ» banner + toast in Armenian
+  - send `forceId` on subsequent POSTs so the server **replaces** the user's existing entry instead of appending a duplicate row, even if they change their name or avatar
 
 Tiny `fs`-backed backend for the RSVP list. Otherwise fully static.
 
@@ -79,16 +101,29 @@ Tiny `fs`-backed backend for the RSVP list. Otherwise fully static.
 # install (legacy peer deps because react-spring still pins React 18)
 npm install
 
-# dev
+# 1) set your public origin — required for share links & OG metadata
+cp .env.example .env.local
+# then edit .env.local and set NEXT_PUBLIC_APP_URL=https://your-domain.example.com
+#   (or http://localhost:3000 for local dev)
+
+# 2) dev
 npm run dev
 # → http://localhost:3000
 
-# production build
+# 3) production build
 npm run build
 npm run start
 ```
 
 > `.npmrc` already sets `legacy-peer-deps=true` so `npm install` just works.
+
+### Environment variables
+
+| Variable | Purpose | Required? |
+|---|---|---|
+| `NEXT_PUBLIC_APP_URL` | Public origin used to build share URLs and OG metadata (`metadataBase`). Inlined at build time, so it must be set before `next build`. | **Yes for prod / share-able links** (without it, share URLs render as relative paths and OG image absolutization can't happen) |
+
+The app never falls back to `window.location.origin` — share URLs are deterministic and always come from `NEXT_PUBLIC_APP_URL`. This avoids dev/prod hostname leaks and SSR/CSR hydration mismatches.
 
 ---
 
@@ -99,6 +134,7 @@ npm run start
 ```bash
 npm i -g vercel
 vercel        # follow prompts, accept defaults
+vercel env add NEXT_PUBLIC_APP_URL  # paste your prod origin
 vercel --prod # ship it
 ```
 
@@ -126,7 +162,10 @@ republic-day/
 │   │   ├── layout.tsx            # html shell, fonts, metadata
 │   │   ├── page.tsx              # stage controller (intro → setup → main → yes/no)
 │   │   ├── globals.css           # Tailwind v4 + custom keyframes + neon utilities
-│   │   └── api/rsvp/route.ts     # GET/POST RSVP list — writes rsvps.json via fs
+│   │   ├── api/rsvp/route.ts     # GET/POST RSVP list — writes rsvps.json via fs
+│   │   └── p/[id]/
+│   │       ├── page.tsx          # public per-user profile (server, OG metadata)
+│   │       └── PublicProfile.tsx # animated card + share + reserve CTA
 │   ├── components/
 │   │   ├── CinematicIntro.tsx    # 4-line cinematic opener
 │   │   ├── ProfileSetup.tsx      # name + selfie + avatar + nickname
@@ -135,8 +174,11 @@ republic-day/
 │   │   ├── ImpossibleNoButton.tsx# the runaway NO button (the centerpiece)
 │   │   ├── YesScreen.tsx         # fireworks + ID card + share + RSVP list
 │   │   ├── NoScreen.tsx          # grayscale + scan + duduk + lockout
-│   │   ├── PatrioticIDCard.tsx   # downloadable patriot ID
+│   │   ├── PatrioticIDCard.tsx   # downloadable patriot ID + verdict stamp
+│   │   ├── QuizStage.tsx         # 3 random Qs + Soviet-judge verdict reveal
+│   │   ├── VerdictBadge.tsx      # SUCCESS / FAIL chip+stamp (stamp/chip/mini)
 │   │   ├── RSVPList.tsx          # «ՀԱՅՐԵՆԱՍԵՐՆԵՐԻ ՑՈՒՑԱԿ» — who's coming
+│   │   ├── ShareMenu.tsx         # WhatsApp/Telegram/FB/X/Viber/Email/native share
 │   │   └── FloatingEmojis.tsx    # background ambient emojis
 │   └── lib/
 │       ├── store.ts              # localStorage-backed app state
@@ -144,7 +186,10 @@ republic-day/
 │       ├── avatar.ts             # DiceBear helpers
 │       ├── armenianContent.ts    # all Armenian copy in one place
 │       ├── types.ts              # shared RsvpEntry type (client + server)
+│       ├── rsvpStore.ts          # server-only fs helpers (readEntries/findEntry/…)
 │       └── utils.ts              # cn(), pick(), randomBetween(), hashString()
+│   └── hooks/
+│       └── useDeviceRsvp.ts      # localStorage flag holding ONLY the user's RSVP id
 ├── rsvps.json                    # ← created at runtime by /api/rsvp (gitignored)
 ├── public/uploads/               # ← selfie images written by /api/rsvp (gitignored)
 ├── package.json

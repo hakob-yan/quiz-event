@@ -16,7 +16,10 @@ const serifArmenian = Noto_Serif_Armenian({
   display: "swap",
 });
 
+const PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "");
+
 export const metadata: Metadata = {
+  metadataBase: PUBLIC_BASE_URL ? new URL(PUBLIC_BASE_URL) : undefined,
   title: "ՎԱՂԸ ԳԱԼԻ՞Ս ԵՍ 🇦🇲 · Մայիսի 28",
   description: "Հայաստանի Հանրապետության Օրվա ամենախելագար արարողակարգը",
   openGraph: {
